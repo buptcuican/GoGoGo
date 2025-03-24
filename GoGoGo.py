@@ -1,6 +1,7 @@
 import pygame
 import random
 import sys
+import os
 from pygame.locals import *
 
 # 初始化Pygame
@@ -27,7 +28,8 @@ class Player(pygame.sprite.Sprite):
     def __init__(self, screen_height):
         super().__init__()
         self.screen_height = screen_height
-        self.normal_image = pygame.image.load('resources/dino.svg').convert_alpha()
+        base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+        self.normal_image = pygame.image.load(os.path.join(base_path, 'resources/dino.svg')).convert_alpha()
         self.crouch_image = pygame.transform.scale(self.normal_image, (40, 30))
         self.image = self.normal_image
         self.rect = self.image.get_rect(midleft=(100, screen_height // 2))
@@ -65,12 +67,15 @@ class Obstacle(pygame.sprite.Sprite):
         super().__init__()
         self.type = type
         if type == "high":
-            self.image = pygame.image.load('resources/cactus_high.svg').convert_alpha()
+            base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+            self.image = pygame.image.load(os.path.join(base_path, 'resources/cactus_high.svg')).convert_alpha()
             y_pos = screen_height - 120
         else:
-            self.image = pygame.image.load('resources/cactus_low.svg').convert_alpha()
-            y_pos = screen_height - 80  # 需要下蹲的高度
+            base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+            self.image = pygame.image.load(os.path.join(base_path, 'resources/cactus_low.svg')).convert_alpha()
+            y_pos = screen_height - 80  # 调整低障碍物高度
         self.rect = self.image.get_rect(midleft=(screen_width, y_pos))
+        print(f'生成障碍物 类型:{type} 坐标:{self.rect}')
 
 
 class Coin(pygame.sprite.Sprite):
@@ -78,7 +83,9 @@ class Coin(pygame.sprite.Sprite):
         super().__init__()
         self.image = pygame.Surface((20, 20))
         self.image.fill(GOLD)
-        y_pos = random.randint(100, screen_height - 100)
+        max_jump_height = (abs(JUMP_POWER)**2) / (2 * GRAVITY)
+        ground_level = screen_height - 50
+        y_pos = random.randint(int(ground_level - max_jump_height), int(ground_level - 20))
         self.rect = self.image.get_rect(center=(screen_width, y_pos))
 
 
@@ -88,7 +95,7 @@ class Game:
         self.fullscreen = False
         self.actual_width = BASE_WIDTH
         self.actual_height = BASE_HEIGHT
-        pygame.display.set_caption("横版闯关游戏")
+        pygame.display.set_caption("GoGoGo")
 
         # 游戏状态
         self.running = True
@@ -172,10 +179,15 @@ class Game:
                 # 碰撞检测
                 for obstacle in self.obstacles:
                     if pygame.sprite.collide_rect(self.player, obstacle):
-                        collision_valid = (obstacle.type == "low")
-                        if not collision_valid:
+                        collision_valid = obstacle.type in ['high', 'low']
+                        if collision_valid:
+                            print(f'碰撞发生！类型:{obstacle.type} 下蹲状态:{self.player.is_crouching}')
                             self.game_over = True
                             self.restart_time = pygame.time.get_ticks()
+                            
+                            # 绘制碰撞框
+                            pygame.draw.rect(self.screen, RED, self.player.rect, 2)
+                            pygame.draw.rect(self.screen, RED, obstacle.rect, 2)
 
                 # 金币收集
                 for coin in pygame.sprite.spritecollide(self.player, self.coins, True):
