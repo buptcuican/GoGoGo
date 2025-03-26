@@ -16,6 +16,7 @@ PLAYER_SPEED = 5
 BASE_SCROLL_SPEED = 5
 SPEED_INCREASE = 0.001
 OBSTACLE_INTERVAL = 1500
+SCALE_FACTOR = 1.0  # 初始缩放比例
 
 # 颜色定义
 WHITE = (255, 255, 255)
@@ -29,8 +30,12 @@ class Player(pygame.sprite.Sprite):
         super().__init__()
         self.screen_height = screen_height
         base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
-        self.normal_image = pygame.image.load(os.path.join(base_path, 'resources/dino.svg')).convert_alpha()
-        self.crouch_image = pygame.transform.scale(self.normal_image, (40, 30))
+        original_image = pygame.image.load(os.path.join(base_path, 'resources/dino.svg')).convert_alpha()
+        self.normal_image = pygame.transform.scale(original_image, 
+            (int(original_image.get_width() * SCALE_FACTOR), 
+             int(original_image.get_height() * SCALE_FACTOR)))
+        self.crouch_image = pygame.transform.scale(self.normal_image, 
+            (int(40 * SCALE_FACTOR), int(30 * SCALE_FACTOR)))
         self.image = self.normal_image
         self.rect = self.image.get_rect(midleft=(100, screen_height // 2))
         self.vel_y = 0
@@ -68,12 +73,18 @@ class Obstacle(pygame.sprite.Sprite):
         self.type = type
         if type == "high":
             base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
-            self.image = pygame.image.load(os.path.join(base_path, 'resources/cactus_high.svg')).convert_alpha()
-            y_pos = screen_height - 120
+            original_image = pygame.image.load(os.path.join(base_path, 'resources/cactus_high.svg')).convert_alpha()
+            self.image = pygame.transform.scale(original_image, 
+                (int(original_image.get_width() * SCALE_FACTOR),
+                 int(original_image.get_height() * SCALE_FACTOR)))
+            y_pos = screen_height - int(120 * SCALE_FACTOR)
         else:
             base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
-            self.image = pygame.image.load(os.path.join(base_path, 'resources/cactus_low.svg')).convert_alpha()
-            y_pos = screen_height - 80  # 调整低障碍物高度
+            original_image = pygame.image.load(os.path.join(base_path, 'resources/cactus_low.svg')).convert_alpha()
+            self.image = pygame.transform.scale(original_image, 
+                (int(original_image.get_width() * SCALE_FACTOR),
+                 int(original_image.get_height() * SCALE_FACTOR)))
+            y_pos = screen_height - int(80 * SCALE_FACTOR)  # 调整低障碍物高度
         self.rect = self.image.get_rect(midleft=(screen_width, y_pos))
         print(f'生成障碍物 类型:{type} 坐标:{self.rect}')
 
@@ -81,20 +92,19 @@ class Obstacle(pygame.sprite.Sprite):
 class Coin(pygame.sprite.Sprite):
     def __init__(self, screen_width, screen_height):
         super().__init__()
-        self.image = pygame.Surface((20, 20))
+        self.image = pygame.Surface((int(20 * SCALE_FACTOR), int(20 * SCALE_FACTOR)))
         self.image.fill(GOLD)
-        max_jump_height = (abs(JUMP_POWER)**2) / (2 * GRAVITY)
-        ground_level = screen_height - 50
-        y_pos = random.randint(int(ground_level - max_jump_height), int(ground_level - 20))
+        max_jump_height = (abs(JUMP_POWER)**2) / (2 * GRAVITY) * SCALE_FACTOR
+        ground_level = screen_height - int(50 * SCALE_FACTOR)
+        y_pos = random.randint(int(ground_level - max_jump_height), int(ground_level - 20 * SCALE_FACTOR))
         self.rect = self.image.get_rect(center=(screen_width, y_pos))
 
 
 class Game:
     def __init__(self):
-        self.screen = pygame.display.set_mode((BASE_WIDTH, BASE_HEIGHT), RESIZABLE)
-        self.fullscreen = False
-        self.actual_width = BASE_WIDTH
-        self.actual_height = BASE_HEIGHT
+        self.screen = pygame.display.set_mode((0, 0), FULLSCREEN)
+        self.fullscreen = True
+        self.actual_width, self.actual_height = self.screen.get_size()
         pygame.display.set_caption("GoGoGo")
 
         # 游戏状态
@@ -120,7 +130,7 @@ class Game:
         if self.fullscreen:
             self.screen = pygame.display.set_mode((0, 0), FULLSCREEN)
         else:
-            self.screen = pygame.display.set_mode((BASE_WIDTH, BASE_HEIGHT), RESIZABLE)
+            self.screen = pygame.display.set_mode((0, 0), FULLSCREEN)
         self.actual_width, self.actual_height = self.screen.get_size()
         self.init_game()  # 重置游戏以适应新尺寸
 
@@ -135,6 +145,8 @@ class Game:
                     self.player.jump()
                 elif event.key == K_DOWN:
                     self.player.is_crouching = True
+                elif event.key == K_ESCAPE:
+                    self.running = False
                 elif self.game_over and pygame.time.get_ticks() - self.restart_time > 3000:
                     self.init_game()
                     self.game_over = False
@@ -197,7 +209,7 @@ class Game:
             # 绘制动态背景
             self.screen.fill((245, 245, 245))
             for i in range(3):
-                pygame.draw.rect(self.screen, (200, 200, 200), (0, self.actual_height-50 + i*5, self.actual_width, 2))
+                pygame.draw.rect(self.screen, (200, 200, 200), (0, self.actual_height - int(50 * SCALE_FACTOR) + i*int(5 * SCALE_FACTOR), self.actual_width, int(2 * SCALE_FACTOR)))
             self.all_sprites.draw(self.screen)
 
             # 显示分数
